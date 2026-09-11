@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		AA00000000000000000000AC /* ProxyPilotTransparentProxy.systemextension in Embed System Extensions */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000AF /* ProxyPilotTransparentProxy.systemextension */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+/* End PBXBuildFile section */
+
 /* Begin PBXContainerItemProxy section */
 		AA00000000000000000000AB /* PBXContainerItemProxy */ = {
 			isa = PBXContainerItemProxy;
@@ -14,11 +18,33 @@
 			remoteGlobalIDString = 83FE52593052CD9F000424A1;
 			remoteInfo = managerproxy;
 		};
+		AA00000000000000000000AD /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 83FE52523052CD9F000424A1 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = AA00000000000000000000B0;
+			remoteInfo = ProxyPilotTransparentProxy;
+		};
 /* End PBXContainerItemProxy section */
+
+/* Begin PBXCopyFilesBuildPhase section */
+		AA00000000000000000000AE /* Embed System Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "$(SYSTEM_EXTENSIONS_FOLDER_PATH)";
+			dstSubfolderSpec = 16;
+			files = (
+				AA00000000000000000000AC /* ProxyPilotTransparentProxy.systemextension in Embed System Extensions */,
+			);
+			name = "Embed System Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
 		83FE525A3052CD9F000424A1 /* ProxyPilot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ProxyPilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		83FE52C53052D2C5000424A1 /* ProxyPilotTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ProxyPilotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA00000000000000000000AF /* ProxyPilotTransparentProxy.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; path = ProxyPilotTransparentProxy.systemextension; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -30,6 +56,16 @@
 		AA00000000000000000000A2 /* ProxyPilotTests */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
 			path = ProxyPilotTests;
+			sourceTree = "<group>";
+		};
+		AA00000000000000000000B1 /* ProxyPilotTransparentProxy */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = ProxyPilotTransparentProxy;
+			sourceTree = "<group>";
+		};
+		AA00000000000000000000B2 /* Shared */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = Shared;
 			sourceTree = "<group>";
 		};
 /* End PBXFileSystemSynchronizedRootGroup section */
@@ -49,6 +85,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AA00000000000000000000B3 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXFrameworksBuildPhase section */
 
 /* Begin PBXGroup section */
@@ -56,6 +99,8 @@
 			isa = PBXGroup;
 			children = (
 				83FE525C3052CD9F000424A1 /* managerproxy */,
+				AA00000000000000000000B2 /* Shared */,
+				AA00000000000000000000B1 /* ProxyPilotTransparentProxy */,
 				AA00000000000000000000A2 /* ProxyPilotTests */,
 				83FE525B3052CD9F000424A1 /* Products */,
 			);
@@ -65,6 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				83FE525A3052CD9F000424A1 /* ProxyPilot.app */,
+				AA00000000000000000000AF /* ProxyPilotTransparentProxy.systemextension */,
 				83FE52C53052D2C5000424A1 /* ProxyPilotTests.xctest */,
 			);
 			name = Products;
@@ -80,13 +126,16 @@
 				83FE52563052CD9F000424A1 /* Sources */,
 				83FE52573052CD9F000424A1 /* Frameworks */,
 				83FE52583052CD9F000424A1 /* Resources */,
+				AA00000000000000000000AE /* Embed System Extensions */,
 			);
 			buildRules = (
 			);
 			dependencies = (
+				AA00000000000000000000B6 /* PBXTargetDependency */,
 			);
 			fileSystemSynchronizedGroups = (
 				83FE525C3052CD9F000424A1 /* managerproxy */,
+				AA00000000000000000000B2 /* Shared */,
 			);
 			name = managerproxy;
 			packageProductDependencies = (
@@ -118,6 +167,29 @@
 			productReference = 83FE52C53052D2C5000424A1 /* ProxyPilotTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		AA00000000000000000000B0 /* ProxyPilotTransparentProxy */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = AA00000000000000000000B9 /* Build configuration list for PBXNativeTarget "ProxyPilotTransparentProxy" */;
+			buildPhases = (
+				AA00000000000000000000B5 /* Sources */,
+				AA00000000000000000000B3 /* Frameworks */,
+				AA00000000000000000000B4 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				AA00000000000000000000B1 /* ProxyPilotTransparentProxy */,
+				AA00000000000000000000B2 /* Shared */,
+			);
+			name = ProxyPilotTransparentProxy;
+			packageProductDependencies = (
+			);
+			productName = ProxyPilotTransparentProxy;
+			productReference = AA00000000000000000000AF /* ProxyPilotTransparentProxy.systemextension */;
+			productType = "com.apple.product-type.system-extension";
+		};
 /* End PBXNativeTarget section */
 
 /* Begin PBXProject section */
@@ -134,6 +206,9 @@
 					AA00000000000000000000A3 = {
 						CreatedOnToolsVersion = 26.3;
 						TestTargetID = 83FE52593052CD9F000424A1;
+					};
+					AA00000000000000000000B0 = {
+						CreatedOnToolsVersion = 26.3;
 					};
 				};
 			};
@@ -153,6 +228,7 @@
 			projectRoot = "";
 			targets = (
 				83FE52593052CD9F000424A1 /* managerproxy */,
+				AA00000000000000000000B0 /* ProxyPilotTransparentProxy */,
 				AA00000000000000000000A3 /* ProxyPilotTests */,
 			);
 		};
@@ -167,6 +243,13 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 		AA00000000000000000000A6 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		AA00000000000000000000B4 /* Resources */ = {
 			isa = PBXResourcesBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
@@ -190,6 +273,13 @@
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AA00000000000000000000B5 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXSourcesBuildPhase section */
 
 /* Begin PBXTargetDependency section */
@@ -197,6 +287,11 @@
 			isa = PBXTargetDependency;
 			target = 83FE52593052CD9F000424A1 /* managerproxy */;
 			targetProxy = AA00000000000000000000AB /* PBXContainerItemProxy */;
+		};
+		AA00000000000000000000B6 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = AA00000000000000000000B0 /* ProxyPilotTransparentProxy */;
+			targetProxy = AA00000000000000000000AD /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -326,10 +421,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = managerproxy/ProxyPilot.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = V45R39SVY3;
+				DEVELOPMENT_TEAM = 37AGF843SG;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -359,10 +455,11 @@
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
 				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				CODE_SIGN_ENTITLEMENTS = managerproxy/ProxyPilot.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = V45R39SVY3;
+				DEVELOPMENT_TEAM = 37AGF843SG;
 				ENABLE_APP_SANDBOX = NO;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -393,7 +490,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = V45R39SVY3;
+				DEVELOPMENT_TEAM = 37AGF843SG;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
@@ -412,7 +509,7 @@
 				BUNDLE_LOADER = "$(TEST_HOST)";
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
-				DEVELOPMENT_TEAM = V45R39SVY3;
+				DEVELOPMENT_TEAM = 37AGF843SG;
 				GENERATE_INFOPLIST_FILE = YES;
 				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
@@ -422,6 +519,66 @@
 				SWIFT_EMIT_LOC_STRINGS = NO;
 				SWIFT_VERSION = 5.0;
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/ProxyPilot.app/Contents/MacOS/ProxyPilot";
+			};
+			name = Release;
+		};
+		AA00000000000000000000B7 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ProxyPilotTransparentProxy/ProxyPilotTransparentProxy.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 37AGF843SG;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ProxyPilotTransparentProxy/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.proxypilot.mac.TransparentProxy;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SKIP_INSTALL = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+		AA00000000000000000000B8 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = ProxyPilotTransparentProxy/ProxyPilotTransparentProxy.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = 37AGF843SG;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = ProxyPilotTransparentProxy/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@executable_path/../../../../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.proxypilot.mac.TransparentProxy;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				SKIP_INSTALL = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = nonisolated;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 5.0;
 			};
 			name = Release;
 		};
@@ -451,6 +608,15 @@
 			buildConfigurations = (
 				AA00000000000000000000A8 /* Debug */,
 				AA00000000000000000000A9 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		AA00000000000000000000B9 /* Build configuration list for PBXNativeTarget "ProxyPilotTransparentProxy" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				AA00000000000000000000B7 /* Debug */,
+				AA00000000000000000000B8 /* Release */,
 			);
 			defaultConfigurationIsVisible = 0;
 			defaultConfigurationName = Release;

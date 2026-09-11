@@ -28,7 +28,14 @@
       }
     },
     "*.local" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "*.local"
+          }
+        }
+      }
     },
     "%@ — %@" : {
       "comment" : "Profile name — address",
@@ -246,7 +253,14 @@
       }
     },
     "127.0.0.1" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "127.0.0.1"
+          }
+        }
+      }
     },
     "A small endpoint your proxy can reach. Default is Google's generate_204." : {
       "extractionState" : "manual",
@@ -733,7 +747,14 @@
       }
     },
     "Clear search" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "清除搜索"
+          }
+        }
+      }
     },
     "Confirm Before Restarting Apps" : {
       "extractionState" : "manual",
@@ -1187,7 +1208,14 @@
       }
     },
     "FlClash" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "FlClash"
+          }
+        }
+      }
     },
     "Force Quit %@" : {
       "extractionState" : "manual",
@@ -1267,7 +1295,14 @@
       }
     },
     "https://www.gstatic.com/generate_204" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "https://www.gstatic.com/generate_204"
+          }
+        }
+      }
     },
     "Include debug-level entries in Diagnostics." : {
       "extractionState" : "manual",
@@ -1279,6 +1314,12 @@
           }
         }
       }
+    },
+    "Intercept this app's traffic with the system extension — covers apps that ignore launch arguments and environment variables." : {
+
+    },
+    "Intercept Traffic Per-App" : {
+
     },
     "It is running without the proxy you assigned. Restart it through ProxyPilot to apply the settings." : {
       "extractionState" : "manual",
@@ -1567,7 +1608,14 @@
       }
     },
     "No applications configured" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "尚未配置应用"
+          }
+        }
+      }
     },
     "No applications yet" : {
       "extractionState" : "manual",
@@ -1781,7 +1829,14 @@
       }
     },
     "Open ProxyPilot to add one." : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "打开 ProxyPilot 添加应用。"
+          }
+        }
+      }
     },
     "Open straight to the menu bar without showing the window." : {
       "extractionState" : "manual",
@@ -1859,6 +1914,9 @@
           }
         }
       }
+    },
+    "Phase 1 launches apps with Chromium arguments or proxy environment variables — apps that ignore both stay direct. Phase 2 (Transparent Proxy) intercepts per-app traffic with a system extension; UDP and DNS still bypass the proxy." : {
+
     },
     "Pick the best strategy for the detected app runtime." : {
       "extractionState" : "manual",
@@ -2037,7 +2095,14 @@
       }
     },
     "ProxyPilot" : {
-
+      "localizations" : {
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "ProxyPilot"
+          }
+        }
+      }
     },
     "ProxyPilot %@ is the latest build." : {
       "extractionState" : "manual",
@@ -2258,6 +2323,12 @@
           }
         }
       }
+    },
+    "Route apps that ignore launch arguments and environment variables. Requires the ProxyPilot system extension." : {
+
+    },
+    "Routed apps: %lld" : {
+
     },
     "running" : {
       "extractionState" : "manual",
@@ -2863,6 +2934,9 @@
           }
         }
       }
+    },
+    "Turn on Transparent Proxy in Settings to route this app per-flow." : {
+
     },
     "Type" : {
       "extractionState" : "manual",

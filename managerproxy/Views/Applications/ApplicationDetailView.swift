@@ -137,7 +137,41 @@ struct ApplicationDetailView: View {
                     .font(Theme.caption)
                     .foregroundStyle(.secondary)
             }
+
+            if let profile, !profile.isDirect {
+                transparentProxyRow
+            }
         }
+    }
+
+    private var transparentProxyRow: some View {
+        VStack(alignment: .leading, spacing: 4) {
+            HStack(alignment: .top, spacing: 10) {
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("Transparent Proxy")
+                        .font(Theme.body)
+                    Text("Intercept this app's traffic with the system extension — covers apps that ignore launch arguments and environment variables.")
+                        .font(.system(size: 10))
+                        .foregroundStyle(.tertiary)
+                }
+                Spacer(minLength: 12)
+                Toggle("", isOn: Binding(
+                    get: { current.usesTransparentProxy },
+                    set: { state.setTransparentProxyEnabled($0, for: current) }
+                ))
+                .labelsHidden()
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .disabled(!state.settings.transparentProxyEnabled)
+            }
+
+            if !state.settings.transparentProxyEnabled {
+                Text("Turn on Transparent Proxy in Settings to route this app per-flow.")
+                    .font(.system(size: 10))
+                    .foregroundStyle(Theme.warning)
+            }
+        }
+        .padding(.top, 4)
     }
 
     // MARK: Mode

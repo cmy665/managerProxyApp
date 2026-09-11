@@ -88,6 +88,11 @@ struct ManagedApplication: Identifiable, Codable, Hashable, Sendable {
     /// Cached result of `AppDetector` so launcher selection stays synchronous.
     var runtime: ApplicationRuntime
 
+    /// Phase 2: when on (and the transparent proxy master switch is on), the
+    /// app's traffic is intercepted per-flow by the system extension instead of
+    /// relying on Chromium arguments / environment variables alone.
+    var usesTransparentProxy: Bool
+
     var version: String
 
     var createdAt: Date
@@ -104,6 +109,7 @@ struct ManagedApplication: Identifiable, Codable, Hashable, Sendable {
         launchStrategy: LaunchStrategy = .auto,
         bypassDomains: [String] = AppSettings.defaultBypassList,
         runtime: ApplicationRuntime = .unknown,
+        usesTransparentProxy: Bool = false,
         version: String = "",
         createdAt: Date = Date(),
         updatedAt: Date = Date()
@@ -118,6 +124,7 @@ struct ManagedApplication: Identifiable, Codable, Hashable, Sendable {
         self.launchStrategy = launchStrategy
         self.bypassDomains = bypassDomains
         self.runtime = runtime
+        self.usesTransparentProxy = usesTransparentProxy
         self.version = version
         self.createdAt = createdAt
         self.updatedAt = updatedAt
@@ -158,7 +165,7 @@ struct ManagedApplication: Identifiable, Codable, Hashable, Sendable {
     enum CodingKeys: String, CodingKey {
         case id, name, bundleIdentifier, bundlePath, executablePath, enabled
         case proxyProfileID, launchStrategy, bypassDomains, runtime, version
-        case createdAt, updatedAt
+        case usesTransparentProxy, createdAt, updatedAt
     }
 
     init(from decoder: Decoder) throws {
@@ -173,6 +180,7 @@ struct ManagedApplication: Identifiable, Codable, Hashable, Sendable {
         launchStrategy = try c.decodeIfPresent(LaunchStrategy.self, forKey: .launchStrategy) ?? .auto
         bypassDomains = try c.decodeIfPresent([String].self, forKey: .bypassDomains) ?? AppSettings.defaultBypassList
         runtime = try c.decodeIfPresent(ApplicationRuntime.self, forKey: .runtime) ?? .unknown
+        usesTransparentProxy = try c.decodeIfPresent(Bool.self, forKey: .usesTransparentProxy) ?? false
         version = try c.decodeIfPresent(String.self, forKey: .version) ?? ""
         createdAt = try c.decodeIfPresent(Date.self, forKey: .createdAt) ?? Date()
         updatedAt = try c.decodeIfPresent(Date.self, forKey: .updatedAt) ?? Date()

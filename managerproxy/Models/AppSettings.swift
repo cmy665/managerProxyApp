@@ -49,6 +49,10 @@ struct AppSettings: Codable, Equatable, Sendable {
     /// Master switch — persisted so a relaunch keeps the user's intent.
     var masterEnabled: Bool
 
+    /// Phase 2: master switch for the transparent proxy system extension.
+    /// When on, apps with `usesTransparentProxy` are intercepted per-flow.
+    var transparentProxyEnabled: Bool
+
     static let defaultBypassList: [String] = ["localhost", "127.0.0.1", "::1"]
 
     static let defaultTestURL = "https://www.gstatic.com/generate_204"
@@ -71,7 +75,8 @@ struct AppSettings: Codable, Equatable, Sendable {
         enableDebugLogging: Bool = false,
         showLaunchCommand: Bool = true,
         proxyTestURL: String = AppSettings.defaultTestURL,
-        masterEnabled: Bool = true
+        masterEnabled: Bool = true,
+        transparentProxyEnabled: Bool = false
     ) {
         self.launchAtLogin = launchAtLogin
         self.showMenuBarIcon = showMenuBarIcon
@@ -84,6 +89,7 @@ struct AppSettings: Codable, Equatable, Sendable {
         self.showLaunchCommand = showLaunchCommand
         self.proxyTestURL = proxyTestURL
         self.masterEnabled = masterEnabled
+        self.transparentProxyEnabled = transparentProxyEnabled
     }
 
     // MARK: Derived
@@ -120,6 +126,7 @@ struct AppSettings: Codable, Equatable, Sendable {
         case appearance
         case defaultProxyProfileID, defaultBypassList
         case enableDebugLogging, showLaunchCommand, proxyTestURL, masterEnabled
+        case transparentProxyEnabled
     }
 
     init(from decoder: Decoder) throws {
@@ -135,5 +142,6 @@ struct AppSettings: Codable, Equatable, Sendable {
         showLaunchCommand = try c.decodeIfPresent(Bool.self, forKey: .showLaunchCommand) ?? true
         proxyTestURL = try c.decodeIfPresent(String.self, forKey: .proxyTestURL) ?? AppSettings.defaultTestURL
         masterEnabled = try c.decodeIfPresent(Bool.self, forKey: .masterEnabled) ?? true
+        transparentProxyEnabled = try c.decodeIfPresent(Bool.self, forKey: .transparentProxyEnabled) ?? false
     }
 }

@@ -18,6 +18,7 @@ SOCKS5 proxy. Everything else on the machine stays exactly as it was.
 | **Per-app proxy** | Assign an HTTP / HTTPS / SOCKS5 profile to each app, or set it to DIRECT. |
 | **Launch strategies** | Chromium (`--proxy-server`), Environment (`HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY`), and DIRECT. |
 | **Automatic detection** | Reads the bundle's Frameworks and `app.asar` to decide whether an app understands Chromium proxy arguments. |
+| **Transparent proxy** | A `NETransparentProxyProvider` system extension intercepts *any* app's TCP by bundle ID — apps that ignore both Chromium args and env vars are still routed. Rules miss → system direct. |
 | **Real proxy testing** | Level 1 TCP connect with latency, Level 2 a real HTTPS request *through* the proxy. A port being open is not treated as proof. |
 | **Restart handling** | Never silently kills an app. Shows **Restart Required**, asks before restarting, and needs a second confirmation to force quit. |
 | **Master switch** | One switch gates every proxy launch. Turning it off warns about apps that are still running with proxy settings. |
@@ -189,6 +190,34 @@ ALL_PROXY = socks5://127.0.0.1:7890
 Both cases are set in upper and lower case, because tools disagree about which one they
 honour.
 
+### Transparent proxy (Phase 2)
+
+Phase 1 only works for apps that honour Chromium arguments or proxy environment
+variables. For everything else there is the **Transparent Proxy** system extension:
+
+1. Open **Settings → Transparent Proxy** and turn on the master switch. ProxyPilot
+   submits the system-extension activation request and automatically opens
+   **System Settings → Privacy & Security**, where macOS shows an **Allow** button
+   for the extension. Approve it there — this one-time approval is required.
+   (After approval the extension also appears under **General → Login Items &
+   Extensions → Network Extensions**, but the *Allow* button lives in Privacy &
+   Security.)
+2. Back on **Applications**, pick a proxy profile for an app and flip both its switches
+   on (or just the **Transparent Proxy** one).
+3. The next time that app opens a TCP connection, the system hands the flow to
+   ProxyPilot's extension, which looks up the app's bundle ID in
+   `group.proxypilot/transparent-rules.json` and relays it through the assigned proxy
+   (HTTP CONNECT or SOCKS5, credentials from the shared keychain). Apps with no rule are
+   passed back to the system and connect **directly** — nothing else on the machine is
+   affected.
+
+The extension applies the current rule set live: ProxyPilot rewrites
+`transparent-rules.json` in the App Group container whenever profiles, per-app
+assignments or the master switch change, and the extension reloads on file change and on
+a distributed notification.
+
+Phase 2 v1 proxies **TCP only**; UDP and DNS fall through to the system untouched.
+
 ### Testing a specific domain
 
 The proxy test URL is not limited to a health-check endpoint. Point **Settings →
@@ -215,18 +244,22 @@ environment launches and as `--proxy-bypass-list` for Chromium launches.
 > Phase 1 cannot transparently proxy arbitrary macOS applications. Applications must
 > support Chromium proxy arguments or conventional proxy environment variables.
 
-Concretely:
+Phase 2 fixes that with the transparent proxy system extension, with these remaining
+limits:
 
-- Native apps that ignore `HTTP_PROXY` / `HTTPS_PROXY` / `ALL_PROXY` are **not** proxied.
-  The application detail pane reports this honestly as a compatibility matrix rather than
-  pretending otherwise.
-- Existing connections are unaffected. **Enable** means "the next time ProxyPilot starts
-  this app, use this configuration" — it is not a live change to a running process. A
-  running app with a stale configuration is shown as **Restart Required**.
+- **TCP only in v1.** UDP and DNS are not proxied; they are passed through to the system.
+- The system extension must be approved once in **System Settings → General → Login
+  Items & Extensions**. Until it is approved, the master switch shows **Waiting for
+  system approval** and no traffic is intercepted.
+- The extension is activated on demand by the system when a matched app opens a
+  connection; the first matched connection can add a short startup latency.
+- Existing connections are unaffected. **Enable** means "the next time this app connects,
+  use this configuration".
 - Code signing, notarisation and Developer ID distribution are out of scope for this
-  build.
-
-Transparent, flow-level redirection is Phase 2 (see the Roadmap).
+  build (an Apple Development build only runs on this team's machines; App Group
+  `group.proxypilot` is not registered in the Developer portal, so any re-provisioning
+  that consults the portal for capabilities — e.g. `-allowProvisioningUpdates` — can
+  fail; a plain local `xcodebuild build` works).
 
 ## Architecture
 
@@ -236,9 +269,12 @@ ProxyPilot.app
 ├── Application Manager   AppScanner / AppDetector
 ├── Proxy Manager         ProxyProfile CRUD + Keychain
 ├── Launcher Engine       Chromium / Environment / Direct
+├── Transparent Proxy     TransparentProxyController (activation, rule sync)
 ├── Proxy Tester          TCP connect + real HTTP probe
 ├── Process Manager       graceful terminate, force quit
 └── Persistence           Codable + JSON in Application Support
+└── (embedded) ProxyPilotTransparentProxy.systemextension
+    └── NETransparentProxyProvider · TCPRelay (HTTP CONNECT / SOCKS5)
 ```
 
 ```text
@@ -248,27 +284,30 @@ ProxyPilot/
 │   └── AppState.swift           single source of truth, status derivation
 ├── Models/                      ManagedApplication, ProxyProfile, ProxyRule, AppSettings
 ├── Services/                    AppScanner, AppDetector, ProxyTester, ProcessManager,
-│                                PersistenceService, KeychainService
+│                                PersistenceService, KeychainService,
+│                                TransparentProxyController
 ├── Launchers/                   AppLaunching, LaunchPlan(+Builder), LauncherEngine,
 │                                Chromium/Environment/Direct launcher
 ├── Utilities/                   KnownApplications, Log, Theme, ProxyPilotError
-└── Views/                       MainView, SidebarView, Applications/, Proxies/,
-                                 Settings/, MenuBar/, Components/
+├── Views/                       MainView, SidebarView, Applications/, Proxies/,
+│                                Settings/, MenuBar/, Components/
+├── Shared/                      TransparentConstants, TransparentRules, SharedKeychain
+└── ProxyPilotTransparentProxy/  TransparentProxyProvider, TCPRelay, main, Info.plist,
+                                 entitlements
 
 tools/GenerateAppIcon.swift      draws the logo and every icon size
 ProxyPilotTests/                 unit tests + the offscreen snapshot suite
 ```
 
+State files live in `~/Library/Application Support/ProxyPilot/`, plus the App Group
+container `group.proxypilot` holds `transparent-rules.json` (bundle ID → proxy type,
+host, port, keychain account key). Secrets themselves never leave the Keychain: both
+processes share it through access group `37AGF843SG.group.proxypilot`.
+
 `LaunchPlanBuilder` is deliberately a set of pure functions so the entire launch decision
 — proxy URL, environment, `NO_PROXY`, Chromium arguments — is unit-testable without
-starting a process.
-
-State files live in `~/Library/Application Support/ProxyPilot/`:
-
-```text
-applications.json   proxies.json   settings.json
-rules.json          launch-records.json   logs.json
-```
+starting a process. The system extension mirrors that spirit: the rule file is a plain
+JSON model (`TransparentRules.swift`) shared by both targets and written atomically.
 
 ## Security
 
@@ -286,6 +325,12 @@ rules.json          launch-records.json   logs.json
 - Proxy passwords go to the Keychain; the JSON files only ever contain a lookup key.
 - Log values whose key looks sensitive (`password`, `token`, `credential`, `secret`,
   `authorization`) are redacted before they are stored.
+- The transparent proxy runs inside a system extension sandbox: it can only read its own
+  App Group container and the shared keychain, and it is on-demand activated by macOS —
+  no continuous background footprint.
+- A flow whose app has no rule is returned to the system (`handleNewFlow` → `false`) and
+  connects directly; the extension never sees another app's payload beyond the connect
+  metadata needed to route it.
 
 ## Build From Source
 
@@ -293,10 +338,10 @@ rules.json          launch-records.json   logs.json
 # Regenerate the logo and all app-icon assets (only needed after editing the geometry)
 swift tools/GenerateAppIcon.swift
 
-# Build the app
+# Build the app (builds and embeds the system extension too)
 xcodebuild -scheme managerproxy -configuration Debug build
 
-# Run the test suite (91 tests)
+# Run the test suite (108 tests)
 xcodebuild -scheme managerproxy -configuration Debug test
 
 # Run only the non-visual tests — the snapshot suite briefly opens windows
@@ -304,19 +349,26 @@ xcodebuild -scheme managerproxy -configuration Debug test \
   -skip-testing:ProxyPilotTests/SnapshotTests
 ```
 
+Signing note: the app and the `ProxyPilotTransparentProxy` system extension are signed
+with the team's automatic **Mac Team Provisioning Profile** (team `37AGF843SG`), which
+carries the full `networkextension` capability set and the `group.proxypilot` App Group.
+Do **not** pass `-allowProvisioningUpdates`: it consults the Developer portal, where
+`group.proxypilot` is not registered, and fails. Plain local builds are unaffected.
+
 The `SnapshotTests` suite rasterises every screen to `/tmp/proxypilot-shots` so the layout
 can be reviewed. It needs a window server and will flash windows on screen; use
 `-skip-testing` in headless environments.
 
 ## Roadmap
 
-**Phase 1 — this release.** Per-app proxying through Chromium arguments and environment
+**Phase 1 — shipped.** Per-app proxying through Chromium arguments and environment
 variables, proxy testing, restart handling, menu bar, persistence, Keychain, diagnostics.
 
-**Phase 2 — Transparent proxy.** A `NETransparentProxyProvider` system extension so that
-apps which understand neither Chromium arguments nor proxy environment variables can still
-be routed per-app. This is gated on verifying the entitlement, Developer ID, System
-Extension and distribution constraints before any implementation work starts.
+**Phase 2 — shipped.** Transparent proxy via a `NETransparentProxyProvider` system
+extension: any app's TCP flows are intercepted by bundle ID and relayed through its
+assigned HTTP/SOCKS5 proxy; un-routed apps are passed back to the system to connect
+directly. UDP/DNS currently pass through; per-app UDP proxying (a second
+`NEPacketTunnelProvider` or filter-based redirect) is a possible follow-up.
 
 **Phase 3 — Advanced rules.** `DOMAIN`, `DOMAIN-SUFFIX`, `IP`, `CIDR`, `PROCESS`,
 `BUNDLE-ID` and `PORT` matching with `PROXY` / `DIRECT` / `BLOCK` actions. The

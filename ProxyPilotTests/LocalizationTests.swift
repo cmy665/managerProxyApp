@@ -100,7 +100,8 @@ final class LocalizationTests: XCTestCase {
     /// Strings that are the same in Chinese on purpose.
     private static func isIntentionalIdentity(_ key: String) -> Bool {
         let allowed: Set<String> = [
-            "HTTP", "Bundle ID", "Chromium", "Electron", "ProxyPilot"
+            "HTTP", "Bundle ID", "Chromium", "Electron", "ProxyPilot",
+            "FlClash", "*.local", "https://www.gstatic.com/generate_204"
         ]
         if allowed.contains(key) { return true }
         // Pure placeholder / punctuation keys carry no words to translate.

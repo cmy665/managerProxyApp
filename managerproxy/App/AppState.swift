@@ -56,6 +56,9 @@ final class AppState: ObservableObject {
     let processManager: ProcessManager
     let launcher: LauncherEngine
     let tester: ProxyTester
+    /// Phase 2 control plane: system extension activation, proxy configuration
+    /// and rule-file sync.
+    let transparent: TransparentProxyController
 
     // MARK: Persisted state
 
@@ -112,6 +115,7 @@ final class AppState: ObservableObject {
         self.processManager = ProcessManager(log: log)
         self.launcher = LauncherEngine(log: log)
         self.tester = ProxyTester()
+        self.transparent = TransparentProxyController(log: log)
 
         loadPersistedState()
         observeWorkspace()
@@ -180,6 +184,14 @@ final class AppState: ObservableObject {
         await refreshDiscoveredApplications()
         await testAllProxies()
         refreshRunningState()
+
+        // Phase 2: restore the transparent proxy state. Activation is
+        // idempotent, so attempting it on every launch is safe.
+        syncTransparentRules()
+        transparent.refreshStatus()
+        if settings.transparentProxyEnabled {
+            transparent.activateExtensionIfNeeded()
+        }
     }
 
     var appVersion: String {
@@ -451,6 +463,7 @@ final class AppState: ObservableObject {
         }
         if added > 0 {
             persistApplications()
+            syncTransparentRules()
             log.info("Added \(added) application(s)", category: .appScanner, detail: [
                 ("Total", String(applications.count))
             ])
@@ -466,6 +479,7 @@ final class AppState: ObservableObject {
         launchRecords.removeValue(forKey: app.id)
         persistApplications()
         persistLaunchRecords()
+        syncTransparentRules()
         if selectedApplicationID == app.id {
             selectedApplicationID = nil
             isInspectorPresented = false
@@ -478,6 +492,7 @@ final class AppState: ObservableObject {
         mutate(&applications[index])
         applications[index].updatedAt = Date()
         persistApplications()
+        syncTransparentRules()
     }
 
     func assignProxy(_ proxyID: UUID?, to app: ManagedApplication) {
@@ -691,6 +706,7 @@ final class AppState: ObservableObject {
         settings.masterEnabled = enabled
         persistSettings()
         log.info("Master switch \(enabled ? "ON" : "OFF")", category: .app)
+        syncTransparentRules()
 
         guard !enabled else {
             masterOffNotice = nil
@@ -712,6 +728,44 @@ final class AppState: ObservableObject {
 
     func dismissMasterOffNotice() {
         masterOffNotice = nil
+    }
+
+    // MARK: Transparent proxy (Phase 2)
+
+    /// Master switch for the transparent proxy. Enabling it activates the
+    /// system extension (idempotent) and enables the proxy configuration.
+    /// Rules are synced from the per-app `usesTransparentProxy` flags.
+    func setTransparentProxyEnabled(_ enabled: Bool) {
+        guard settings.transparentProxyEnabled != enabled else {
+            // Still (re)sync: an app may have been toggled before first enable.
+            syncTransparentRules()
+            return
+        }
+        settings.transparentProxyEnabled = enabled
+        persistSettings()
+        log.info("Transparent proxy master \(enabled ? "ON" : "OFF")", category: .app)
+
+        if enabled {
+            transparent.activateExtensionIfNeeded()
+            transparent.setEnabled(true)
+        } else {
+            transparent.setEnabled(false)
+        }
+        syncTransparentRules()
+    }
+
+    /// Per-app opt-in for transparent proxying.
+    func setTransparentProxyEnabled(_ enabled: Bool, for app: ManagedApplication) {
+        update(app) { $0.usesTransparentProxy = enabled }
+    }
+
+    /// Writes the current per-app assignments for the extension.
+    func syncTransparentRules() {
+        transparent.syncRules(
+            applications: applications,
+            proxies: proxies,
+            keychain: keychain
+        )
     }
 
     // MARK: Proxy CRUD
@@ -738,6 +792,7 @@ final class AppState: ObservableObject {
             ("Address", profile.displayAddress),
             ("Username", profile.username ?? "—")
         ])
+        syncTransparentRules()
     }
 
     func updateProxy(_ updated: ProxyProfile, password: String?) throws {
@@ -771,6 +826,7 @@ final class AppState: ObservableObject {
             ("Name", profile.name),
             ("Address", profile.displayAddress)
         ])
+        syncTransparentRules()
     }
 
     func deleteProxy(_ profile: ProxyProfile) {
@@ -791,6 +847,7 @@ final class AppState: ObservableObject {
         persistApplications()
         persistSettings()
         log.info("Deleted proxy profile", category: .proxy, detail: [("Name", profile.name)])
+        syncTransparentRules()
     }
 
     func password(for profile: ProxyProfile) -> String? {

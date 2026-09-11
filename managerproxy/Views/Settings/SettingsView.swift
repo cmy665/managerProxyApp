@@ -28,6 +28,7 @@ struct SettingsView: View {
                 VStack(alignment: .leading, spacing: 18) {
                     generalSection
                     proxySection
+                    transparentSection
                     advancedSection
                     aboutSection
                 }
@@ -172,6 +173,75 @@ struct SettingsView: View {
         newBypassEntry = ""
     }
 
+    // MARK: Transparent proxy (Phase 2)
+
+    private var transparentSection: some View {
+        Card {
+            VStack(alignment: .leading, spacing: 12) {
+                PanelSectionTitle(text: "Transparent Proxy")
+
+                settingToggle(
+                    title: "Intercept Traffic Per-App",
+                    subtitle: "Route apps that ignore launch arguments and environment variables. Requires the ProxyPilot system extension.",
+                    isOn: Binding(
+                        get: { state.settings.transparentProxyEnabled },
+                        set: { state.setTransparentProxyEnabled($0) }
+                    )
+                )
+
+                transparentStatusRow
+            }
+        }
+    }
+
+    private var transparentStatusRow: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(spacing: 8) {
+                statusDot
+                Text(statusText)
+                    .font(Theme.caption)
+                    .foregroundStyle(.secondary)
+                if case .activating = state.transparent.state {
+                    ProgressView().controlSize(.mini)
+                }
+            }
+            Text("Routed apps: \(state.transparent.routedAppCount)")
+                .font(Theme.caption)
+                .foregroundStyle(.tertiary)
+        }
+    }
+
+    private var statusDot: some View {
+        Circle()
+            .fill(statusColor)
+            .frame(width: 7, height: 7)
+    }
+
+    private var statusColor: Color {
+        switch state.transparent.state {
+        case .active:   return .green
+        case .disabled: return .gray
+        case .activating: return .yellow
+        case .failed:   return .red
+        case .unknown:  return .gray
+        }
+    }
+
+    private var statusText: String {
+        switch state.transparent.state {
+        case .active:
+            return Localized.format("Active — %lld app(s) routed", state.transparent.routedAppCount)
+        case .disabled:
+            return "Extension ready, proxy configuration off."
+        case .activating:
+            return "Waiting for system approval…"
+        case .failed(let message):
+            return "Failed: \(message)"
+        case .unknown:
+            return "Not configured yet."
+        }
+    }
+
     // MARK: Advanced
 
     private var advancedSection: some View {
@@ -230,7 +300,7 @@ struct SettingsView: View {
                     .buttonStyle(SecondaryButtonStyle())
                 }
 
-                Text("Phase 1 cannot transparently proxy arbitrary macOS applications. Apps must support Chromium proxy arguments or conventional proxy environment variables.")
+                Text("Phase 1 launches apps with Chromium arguments or proxy environment variables — apps that ignore both stay direct. Phase 2 (Transparent Proxy) intercepts per-app traffic with a system extension; UDP and DNS still bypass the proxy.")
                     .font(Theme.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
