@@ -44,7 +44,7 @@
 /* Begin PBXFileReference section */
 		83FE525A3052CD9F000424A1 /* ProxyPilot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ProxyPilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		83FE52C53052D2C5000424A1 /* ProxyPilotTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ProxyPilotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA00000000000000000000AF /* ProxyPilotTransparentProxy.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; path = ProxyPilotTransparentProxy.systemextension; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA00000000000000000000AF /* ProxyPilotTransparentProxy.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; name = ProxyPilotTransparentProxy.systemextension; path = com.proxypilot.mac.TransparentProxy.systemextension; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -528,7 +528,7 @@
 				CODE_SIGN_ENTITLEMENTS = ProxyPilotTransparentProxy/ProxyPilotTransparentProxy.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 37AGF843SG;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -558,7 +558,7 @@
 				CODE_SIGN_ENTITLEMENTS = ProxyPilotTransparentProxy/ProxyPilotTransparentProxy.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 5;
+				CURRENT_PROJECT_VERSION = 8;
 				DEVELOPMENT_TEAM = 37AGF843SG;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;

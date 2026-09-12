@@ -82,6 +82,8 @@ final class TransparentProxyProvider: NETransparentProxyProvider {
         let settings = NETransparentProxyNetworkSettings(tunnelRemoteAddress: "127.0.0.1")
         // All outbound TCP except loopback. A nil remote/local network matches
         // everything of the given protocol and direction, excluding loopback.
+        // UDP is intentionally not intercepted: the extension recovers original
+        // hostnames from TLS SNI / HTTP Host headers instead of DNS.
         let tcpRule = NENetworkRule(
             remoteNetwork: nil,
             remotePrefix: 0,
@@ -120,7 +122,8 @@ final class TransparentProxyProvider: NETransparentProxyProvider {
 
     override func handleNewFlow(_ flow: NEAppProxyFlow) -> Bool {
         // The provider contract delivers flows as the base class; only TCP
-        // flows are intercepted (UDP goes through handleNewUDPFlow below).
+        // flows are intercepted. UDP (including DNS) stays on the system path;
+        // original hostnames are recovered from TLS SNI / HTTP Host headers.
         guard let tcpFlow = flow as? NEAppProxyTCPFlow else {
             logger.info("Direct (non-TCP flow)")
             return false
@@ -152,6 +155,11 @@ final class TransparentProxyProvider: NETransparentProxyProvider {
         relay.start()
         return true
     }
+
+    // `handleNewUDPFlow` is intentionally not overridden: the base-class
+    // default delivers UDP flows to handleNewFlow(_:), which returns false
+    // for non-TCP flows, so UDP (including DNS) is delivered directly by the
+    // system. Original hostnames are recovered from TLS SNI instead.
 
     // `handleNewUDPFlow` is intentionally not overridden: the base-class
     // default forwards UDP flows to `handleNewFlow(_:)`, which returns false

@@ -33,6 +33,9 @@ final class TCPRelay {
     private var didOpenFlow = false
     private var isClosed = false
     private var didFinishRelay = false
+    /// First bytes read from the app, used to recover the original hostname
+    /// via TLS SNI / HTTP Host before connecting to the upstream proxy.
+    private var firstData: Data?
 
     init(
         flow: NEAppProxyTCPFlow,
@@ -52,7 +55,7 @@ final class TCPRelay {
 
     func start() {
         queue.async { [self] in
-            guard let destination = Self.destination(of: flow) else {
+            guard var destination = Self.destination(of: flow) else {
                 logger.warning("TCP relay: no destination endpoint")
                 finish()
                 return
@@ -63,18 +66,55 @@ final class TCPRelay {
                 return
             }
 
-            logger.info("Connecting to proxy \(rule.host):\(rule.port) for \(destination.host):\(destination.port)")
-            let connection = NWConnection(
-                host: NWEndpoint.Host(rule.host),
-                port: port,
-                using: .tcp
-            )
-            upstream = connection
-            connection.stateUpdateHandler = { [weak self] state in
-                self?.handle(state: state, destination: destination)
+            // Open the flow and peek at the first segment. For TLS and HTTP
+            // we can recover the original hostname from SNI / Host header,
+            // which upstream proxies require because they reject raw-IP
+            // connections (geo-DNS, SNI vhosts, corporate proxies).
+            flow.open(withLocalEndpoint: nil) { [weak self] error in
+                guard let self else { return }
+                self.queue.async {
+                    if let error {
+                        self.logger.error("Flow open failed: \(error.localizedDescription, privacy: .public)")
+                        self.finish()
+                        return
+                    }
+                    self.didOpenFlow = true
+                    self.flow.readData { [weak self] data, error in
+                        guard let self else { return }
+                        self.queue.async {
+                            if let error {
+                                self.logger.error("First read failed: \(error.localizedDescription, privacy: .public)")
+                                self.finish()
+                                return
+                            }
+                            if let data, !data.isEmpty {
+                                self.firstData = data
+                                let isIP = IPv4Address(destination.host) != nil || IPv6Address(destination.host) != nil
+                                if isIP, let hostname = SNIHelper.hostname(fromFirstBytes: data) {
+                                    self.logger.info("Recovered hostname via SNI/Host: \(destination.host, privacy: .public) → \(hostname, privacy: .public)")
+                                    destination.host = hostname
+                                }
+                            }
+                            self.connectUpstream(destination: destination, port: port)
+                        }
+                    }
+                }
             }
-            connection.start(queue: queue)
         }
+    }
+
+    private func connectUpstream(destination: (host: String, port: String), port: Network.NWEndpoint.Port) {
+        logger.info("Connecting to proxy \(self.rule.host):\(self.rule.port) for \(destination.host):\(destination.port)")
+        let connection = NWConnection(
+            host: NWEndpoint.Host(self.rule.host),
+            port: port,
+            using: .tcp
+        )
+        upstream = connection
+        connection.stateUpdateHandler = { [weak self] state in
+            self?.handle(state: state, destination: destination)
+        }
+        connection.start(queue: queue)
     }
 
     // MARK: - Upstream state machine
@@ -304,23 +344,26 @@ final class TCPRelay {
 
     private func beginRelay(leftover: Data?) {
         guard !isClosed else { return }
-
-        flow.open(withLocalEndpoint: nil) { [weak self] error in
-            guard let self else { return }
-            self.queue.async {
-                if let error {
-                    self.logger.error("Flow open failed: \(error.localizedDescription, privacy: .public)")
-                    self.finish()
-                    return
-                }
-                self.didOpenFlow = true
-                if let leftover, !leftover.isEmpty {
-                    self.flow.write(leftover) { _ in }
-                }
-                self.startFlowReadLoop()
-                self.startUpstreamReadLoop()
-            }
+        // The flow was already opened in start() to peek at SNI.
+        guard didOpenFlow else {
+            logger.error("beginRelay: flow not opened")
+            finish()
+            return
         }
+
+        // Send the first segment we peeked at (TLS ClientHello / HTTP request)
+        // to the upstream proxy now that the tunnel is established.
+        if let firstData, !firstData.isEmpty {
+            sendToUpstream(firstData)
+            self.firstData = nil
+        }
+        // Forward any leftover bytes from the proxy's handshake response
+        // (e.g. HTTP CONNECT 200 followed by early server data) to the app.
+        if let leftover, !leftover.isEmpty {
+            writeToFlow(leftover)
+        }
+        startFlowReadLoop()
+        startUpstreamReadLoop()
     }
 
     private func startFlowReadLoop() {
