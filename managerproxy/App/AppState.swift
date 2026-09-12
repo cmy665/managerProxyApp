@@ -328,6 +328,10 @@ final class AppState: ObservableObject {
     private func shouldPromptAboutExternalLaunch(_ app: ManagedApplication) -> Bool {
         guard promptedExternalLaunchAppIDs.contains(app.id) == false else { return false }
         guard app.enabled, settings.masterEnabled else { return false }
+        // Transparent proxy (Phase 2) intercepts traffic at the system level
+        // regardless of how the app was launched — no restart is needed, so
+        // the external-launch prompt only applies to Phase 1 launch-arg apps.
+        guard !app.usesTransparentProxy else { return false }
         guard let profile = proxy(for: app), !profile.isDirect, app.launchStrategy != .direct else { return false }
         return needsRestart(app)
     }
@@ -377,6 +381,17 @@ final class AppState: ObservableObject {
     func status(for app: ManagedApplication) -> AppProxyStatus {
         if app.proxyProfileID != nil, proxy(for: app) == nil {
             return .configurationMissing
+        }
+
+        // Transparent proxy (Phase 2): availability depends on the system
+        // extension and rules, not on Phase 1 launch args or direct proxy
+        // reachability tests. The extension relays traffic even when the
+        // proxy's direct reachability test fails (e.g. proxies that require
+        // domain-based routing).
+        if app.usesTransparentProxy {
+            guard app.enabled, settings.masterEnabled else { return .disabled }
+            guard settings.transparentProxyEnabled else { return .disabled }
+            return .active
         }
 
         // Direct means "no proxy" — either no profile assigned, an explicit DIRECT
