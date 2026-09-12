@@ -657,7 +657,15 @@ final class AppState: ObservableObject {
 
         do {
             // An explicit DIRECT strategy always wins over an assigned profile.
-            let resolvedProxy: ProxyProfile? = current.launchStrategy == .direct ? nil : proxy(for: current)
+            // Transparent proxy (Phase 2) also wins: the app is launched without
+            // --proxy-server / proxy env vars, and the system extension handles
+            // interception. Running both would double-proxy the traffic.
+            let resolvedProxy: ProxyProfile?
+            if current.launchStrategy == .direct || current.usesTransparentProxy {
+                resolvedProxy = nil
+            } else {
+                resolvedProxy = proxy(for: current)
+            }
 
             let plan = try launcher.plan(for: current, proxy: resolvedProxy)
             let recordDate = Date()

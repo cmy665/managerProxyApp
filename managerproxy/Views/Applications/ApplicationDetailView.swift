@@ -109,8 +109,16 @@ struct ApplicationDetailView: View {
             }
             .labelsHidden()
             .pickerStyle(.menu)
+            .disabled(current.usesTransparentProxy)
 
-            if let profile, !profile.isDirect {
+            if current.usesTransparentProxy {
+                Label(
+                    "Transparent proxy is active — launch-argument and environment proxy are disabled for this app.",
+                    systemImage: "info.circle"
+                )
+                .font(.system(size: 10.5))
+                .foregroundStyle(Theme.blue)
+            } else if let profile, !profile.isDirect {
                 HStack(spacing: 6) {
                     StatusPill(
                         text: state.health(for: profile).statusLabel,
@@ -186,9 +194,16 @@ struct ApplicationDetailView: View {
                     .foregroundStyle(.tertiary)
             }
 
+            if current.usesTransparentProxy {
+                Text("Launch mode is ignored — the system extension intercepts traffic regardless of how the app is started.")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(.tertiary)
+            }
+
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(LaunchStrategy.allCases) { option in
                     modeRow(option)
+                        .disabled(current.usesTransparentProxy)
                 }
             }
         }
