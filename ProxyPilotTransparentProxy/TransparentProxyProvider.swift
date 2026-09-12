@@ -35,6 +35,11 @@ final class TransparentProxyProvider: NETransparentProxyProvider {
     private var rulesByBundleID: [String: TransparentRule] = [:]
     private var rulesModificationDate: Date?
 
+    /// Absolute path to the rules file, passed by the app via
+    /// protocolConfiguration.providerConfiguration. The extension runs as root
+    /// and cannot rely on containerURL() (which resolves to /var/root/…).
+    private var rulesFilePath: String?
+
     /// Active relays. Guarded by `queue`.
     private var relays: [UUID: TCPRelay] = [:]
 
@@ -50,6 +55,18 @@ final class TransparentProxyProvider: NETransparentProxyProvider {
 
     override func startProxy(options: [String: Any]?, completionHandler: @escaping (Error?) -> Void) {
         logger.info("startProxy")
+
+        // Extract the rules file path passed by the app. The extension runs
+        // as root, so containerURL() would resolve to /var/root/… and miss
+        // the user-level file the app writes.
+        if let proto = protocolConfiguration as? NETunnelProviderProtocol,
+           let path = proto.providerConfiguration?[TransparentProxyConstants.rulesPathKey] as? String,
+           !path.isEmpty {
+            rulesFilePath = path
+            logger.info("Rules path from providerConfiguration: \(path, privacy: .public)")
+        } else {
+            logger.error("No rules path in providerConfiguration — will try app-group container as fallback")
+        }
 
         reloadRules()
 
@@ -150,16 +167,37 @@ final class TransparentProxyProvider: NETransparentProxyProvider {
     }
 
     private func reloadRulesIfChanged() {
-        let date = TransparentRuleStore.modificationDate()
+        let date: Date?
+        if let path = rulesFilePath {
+            date = TransparentRuleStore.modificationDate(atPath: path)
+        } else {
+            date = TransparentRuleStore.modificationDate()
+        }
         guard date != rulesModificationDate else { return }
         reloadRules()
     }
 
     private func reloadRules() {
-        guard let (file, date) = TransparentRuleStore.load() else {
+        // Prefer the absolute path passed by the app; fall back to the
+        // app-group container (which only works when the extension runs as
+        // the same user as the app).
+        let loaded: (TransparentRulesFile, Date?)?
+        if let path = rulesFilePath {
+            let exists = FileManager.default.fileExists(atPath: path)
+            logger.info("reloadRules: path=\(path, privacy: .public) exists=\(exists)")
+            loaded = TransparentRuleStore.load(fromPath: path)
+        } else if let url = TransparentRuleStore.rulesURL() {
+            logger.info("reloadRules: fallback container path=\(url.path, privacy: .public)")
+            loaded = TransparentRuleStore.load()
+        } else {
+            logger.error("reloadRules: no rules path available")
+            loaded = nil
+        }
+
+        guard let (file, date) = loaded else {
+            logger.error("reloadRules: load() returned nil")
             queue.sync { rulesByBundleID = [:] }
-            rulesModificationDate = TransparentRuleStore.modificationDate()
-            logger.info("No usable rules")
+            rulesModificationDate = nil
             return
         }
         var byBundle: [String: TransparentRule] = [:]

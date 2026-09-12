@@ -87,29 +87,51 @@ final class TransparentProxyController: NSObject, ObservableObject {
     }
 
     private func applyEnabled(_ enabled: Bool, completion: ((Error?) -> Void)? = nil) {
-        let manager = NETransparentProxyManager()
-        manager.localizedDescription = "ProxyPilot Transparent Proxy"
+        // Load any existing configuration first so we update in place rather
+        // than creating a duplicate manager on every toggle.
+        NETransparentProxyManager.loadAllFromPreferences { [weak self] managers, loadError in
+            guard let self else { return }
+            if let loadError {
+                self.log.warning("Could not load existing transparent proxy config (will create new): \(loadError.localizedDescription)", category: .app)
+            }
+            let manager = managers?.first ?? NETransparentProxyManager()
+            manager.localizedDescription = "ProxyPilot Transparent Proxy"
 
-        let protocolConfiguration = NETunnelProviderProtocol()
-        protocolConfiguration.providerBundleIdentifier = TransparentProxyConstants.extensionBundleID
-        protocolConfiguration.serverAddress = "127.0.0.1"
-        protocolConfiguration.providerConfiguration = ["app": "ProxyPilot"]
-        manager.protocolConfiguration = protocolConfiguration
-        manager.isEnabled = enabled
+            let protocolConfiguration = (manager.protocolConfiguration as? NETunnelProviderProtocol) ?? NETunnelProviderProtocol()
+            protocolConfiguration.providerBundleIdentifier = TransparentProxyConstants.extensionBundleID
+            protocolConfiguration.serverAddress = "127.0.0.1"
+            // Pass the rules file's absolute path. The extension runs as root
+            // and resolves the app-group container to /var/root/…, so it
+            // cannot find the file via containerURL() on its own.
+            var providerConfig = protocolConfiguration.providerConfiguration as? [String: Any] ?? [:]
+            providerConfig[TransparentProxyConstants.rulesPathKey] = TransparentRuleStore.rulesURL()?.path ?? ""
+            providerConfig["app"] = "ProxyPilot"
+            protocolConfiguration.providerConfiguration = providerConfig
+            manager.protocolConfiguration = protocolConfiguration
+            manager.isEnabled = enabled
 
-        manager.saveToPreferences { [weak self] error in
-            Task { @MainActor in
-                guard let self else { return }
-                if let error {
-                    self.state = .failed(error.localizedDescription)
-                    self.log.error("Failed to \(enabled ? "enable" : "disable") transparent proxy: \(error.localizedDescription)", category: .app)
-                } else {
-                    self.state = enabled ? .active : .disabled
-                    self.log.info("Transparent proxy \(enabled ? "enabled" : "disabled")", category: .app, detail: [
-                        ("Routed apps", String(self.routedAppCount))
-                    ])
+            manager.saveToPreferences { [weak self] error in
+                Task { @MainActor in
+                    guard let self else { return }
+                    if let error {
+                        self.state = .failed(error.localizedDescription)
+                        self.log.error("Failed to \(enabled ? "enable" : "disable") transparent proxy: \(error.localizedDescription)", category: .app)
+                    } else {
+                        self.state = enabled ? .active : .disabled
+                        self.log.info("Transparent proxy \(enabled ? "enabled" : "disabled")", category: .app, detail: [
+                            ("Routed apps", String(self.routedAppCount))
+                        ])
+                        if enabled {
+                            do {
+                                try manager.connection.startVPNTunnel()
+                                self.log.info("Started transparent proxy tunnel", category: .app)
+                            } catch {
+                                self.log.warning("startVPNTunnel returned: \(error.localizedDescription)", category: .app)
+                            }
+                        }
+                    }
+                    completion?(error)
                 }
-                completion?(error)
             }
         }
     }

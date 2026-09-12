@@ -185,12 +185,14 @@ final class AppState: ObservableObject {
         await testAllProxies()
         refreshRunningState()
 
-        // Phase 2: restore the transparent proxy state. Activation is
-        // idempotent, so attempting it on every launch is safe.
+        // Phase 2: restore the transparent proxy state. setEnabled(true)
+        // activates the extension (idempotent) and then saves & enables the
+        // NETransparentProxyManager configuration; refreshStatus first picks
+        // up any configuration saved from a previous run.
         syncTransparentRules()
         transparent.refreshStatus()
         if settings.transparentProxyEnabled {
-            transparent.activateExtensionIfNeeded()
+            transparent.setEnabled(true)
         }
     }
 

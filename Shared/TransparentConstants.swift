@@ -28,6 +28,12 @@ enum TransparentProxyConstants {
     /// Distributed notification the app posts after writing new rules.
     static let rulesChangedNotification = "com.proxypilot.transparent-rules-changed"
 
+    /// Key in NETunnelProviderProtocol.providerConfiguration carrying the
+    /// absolute path to the rules file. The system extension runs as root and
+    /// therefore resolves the app-group container to /var/root/…, so the app
+    /// passes its own (user-level) absolute path explicitly.
+    static let rulesPathKey = "rulesFilePath"
+
     /// Keychain service used for proxy credentials shared with the extension.
     static let keychainService = "com.proxypilot.mac.credentials"
 
