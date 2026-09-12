@@ -273,7 +273,7 @@ ProxyPilot.app
 ├── Proxy Tester          TCP connect + real HTTP probe
 ├── Process Manager       graceful terminate, force quit
 └── Persistence           Codable + JSON in Application Support
-└── (embedded) ProxyPilotTransparentProxy.systemextension
+└── (embedded) com.proxypilot.mac.TransparentProxy.systemextension
     └── NETransparentProxyProvider · TCPRelay (HTTP CONNECT / SOCKS5)
 ```
 
