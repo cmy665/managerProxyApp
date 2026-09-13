@@ -122,6 +122,7 @@ final class TCPRelay {
     private func handle(state: NWConnection.State, destination: (host: String, port: String)) {
         switch state {
         case .ready:
+            logger.info("Upstream connection ready")
             performHandshake(destination: destination)
         case .failed(let error):
             logger.error("Upstream connection failed: \(error.localizedDescription, privacy: .public)")
@@ -129,9 +130,12 @@ final class TCPRelay {
         case .waiting(let error):
             logger.warning("Upstream waiting: \(error.localizedDescription, privacy: .public)")
         case .cancelled:
+            logger.info("Upstream cancelled")
             finish()
+        case .preparing:
+            logger.info("Upstream preparing")
         default:
-            break
+            logger.info("Upstream state: \(String(describing: state), privacy: .public)")
         }
     }
 
@@ -221,6 +225,7 @@ final class TCPRelay {
 
         let needsAuth = !(rule.username ?? "").isEmpty
         let greeting: [UInt8] = needsAuth ? [0x05, 0x01, 0x02] : [0x05, 0x01, 0x00]
+        logger.info("SOCKS5 sending greeting (auth=\(needsAuth))")
 
         connection.send(content: Data(greeting), completion: .contentProcessed { [weak self] error in
             guard let self else { return }
@@ -230,12 +235,14 @@ final class TCPRelay {
                     self.finish()
                     return
                 }
+                self.logger.info("SOCKS5 greeting sent, waiting for method selection")
                 self.receiveExact(2) { data in
                     guard data.count == 2, data[0] == 0x05 else {
-                        self.logger.error("SOCKS5 bad greeting response")
+                        self.logger.error("SOCKS5 bad greeting response: \(data.map { String(format: "%02x", $0) }.joined(), privacy: .public)")
                         self.finish()
                         return
                     }
+                    self.logger.info("SOCKS5 method selected: 0x\(String(format: "%02x", data[1]), privacy: .public)")
                     switch data[1] {
                     case 0x00:
                         self.sendSOCKS5Connect(destination: destination)
@@ -313,6 +320,7 @@ final class TCPRelay {
                 self.finish()
                 return
             }
+            self.logger.info("SOCKS5 connect OK")
             // Reply carries the bound address; read and discard it.
             let atyp = data[3]
             let addressLength: Int
@@ -350,10 +358,12 @@ final class TCPRelay {
             finish()
             return
         }
+        logger.info("Begin relay (firstData=\(self.firstData?.count ?? 0)B, leftover=\(leftover?.count ?? 0)B)")
 
         // Send the first segment we peeked at (TLS ClientHello / HTTP request)
         // to the upstream proxy now that the tunnel is established.
         if let firstData, !firstData.isEmpty {
+            logger.info("Forwarding first segment to upstream (\(firstData.count)B)")
             sendToUpstream(firstData)
             self.firstData = nil
         }
@@ -372,6 +382,7 @@ final class TCPRelay {
             guard let self else { return }
             self.queue.async {
                 if let data, !data.isEmpty {
+                    self.logger.info("App→Proxy: \(data.count)B")
                     self.sendToUpstream(data)
                 }
                 let eof = data?.isEmpty == true
@@ -391,6 +402,7 @@ final class TCPRelay {
             guard let self else { return }
             self.queue.async {
                 if let data, !data.isEmpty {
+                    self.logger.info("Proxy→App: \(data.count)B")
                     self.writeToFlow(data)
                 }
                 if isComplete || error != nil {
