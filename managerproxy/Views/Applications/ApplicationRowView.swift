@@ -149,51 +149,94 @@ struct ApplicationRowView: View {
 
     @ViewBuilder
     private var menuItems: some View {
-        if !isDirect {
-            Button(app.enabled
-                   ? Localized.string("Disable Proxy")
-                   : Localized.string("Enable Proxy")) {
+        if app.usesTransparentProxy {
+            // --- Transparent Proxy (Phase 2) ---
+            Button(app.enabled ? "Disable" : "Enable") {
                 Task { await state.toggleEnabled(app) }
             }
-        }
 
-        if isRunning {
-            Button("Restart With Proxy") {
-                state.requestRestart(app)
+            if let profile = state.proxy(for: app), !profile.isDirect {
+                Button(Localized.format("Test %@", profile.name)) {
+                    Task { await state.testProxy(profile) }
+                }
             }
-        } else {
-            Button("Launch With Proxy") {
-                Task { await state.launch(app) }
+
+            Divider()
+
+            Button("Reveal in Finder") {
+                state.revealInFinder(app)
             }
-        }
 
-        if isRunning, status == .restartRequired {
-            Button("Restart Required — Restart Now") {
-                state.requestRestart(app)
+            Button("Details") {
+                state.selectedApplicationID = app.id
+                state.isInspectorPresented = true
             }
-        }
 
-        Divider()
+            Divider()
 
-        if let profile = state.proxy(for: app), !profile.isDirect {
+            Button("Remove from ProxyPilot", role: .destructive) {
+                state.remove(app)
+            }
+
+        } else if let profile = state.proxy(for: app), !profile.isDirect {
+            // --- Launch Proxy (Phase 1) ---
+            Button(app.enabled ? "Disable Proxy" : "Enable Proxy") {
+                Task { await state.toggleEnabled(app) }
+            }
+
+            if isRunning {
+                Button("Restart With Proxy") {
+                    state.requestRestart(app)
+                }
+            } else {
+                Button("Launch With Proxy") {
+                    Task { await state.launch(app) }
+                }
+            }
+
+            if isRunning, status == .restartRequired {
+                Button("Restart Required — Restart Now") {
+                    state.requestRestart(app)
+                }
+            }
+
+            Divider()
+
             Button(Localized.format("Test %@", profile.name)) {
                 Task { await state.testProxy(profile) }
             }
-        }
 
-        Button("Reveal in Finder") {
-            state.revealInFinder(app)
-        }
+            Button("Reveal in Finder") {
+                state.revealInFinder(app)
+            }
 
-        Button("Details") {
-            state.selectedApplicationID = app.id
-            state.isInspectorPresented = true
-        }
+            Button("Details") {
+                state.selectedApplicationID = app.id
+                state.isInspectorPresented = true
+            }
 
-        Divider()
+            Divider()
 
-        Button("Remove from ProxyPilot", role: .destructive) {
-            state.remove(app)
+            Button("Remove from ProxyPilot", role: .destructive) {
+                state.remove(app)
+            }
+
+        } else {
+            // --- Off / no proxy ---
+            Button("Reveal in Finder") {
+                state.revealInFinder(app)
+            }
+
+            Button("Details") {
+                state.selectedApplicationID = app.id
+                state.isInspectorPresented = true
+            }
+
+            Divider()
+
+            Button("Remove from ProxyPilot", role: .destructive) {
+                state.remove(app)
+            }
         }
     }
 
