@@ -300,7 +300,7 @@ struct SettingsView: View {
                     .buttonStyle(SecondaryButtonStyle())
                 }
 
-                Text("Phase 1 launches apps with Chromium arguments or proxy environment variables — apps that ignore both stay direct. Phase 2 (Transparent Proxy) intercepts per-app traffic with a system extension; UDP and DNS still bypass the proxy.")
+                Text("Phase 1 launches apps with Chromium arguments or proxy environment variables — apps that ignore both stay direct. Phase 2 (Transparent Proxy) intercepts per-app traffic with a system extension, relaying TCP, UDP and DNS through the upstream proxy.")
                     .font(Theme.caption)
                     .foregroundStyle(.secondary)
                     .fixedSize(horizontal: false, vertical: true)

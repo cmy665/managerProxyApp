@@ -459,8 +459,8 @@ struct ApplicationDetailView: View {
             )
             infoRow(
                 icon: "network",
-                title: "TCP only",
-                detail: "Only TCP traffic is relayed. UDP and DNS continue to use the system's direct connection."
+                title: "TCP, UDP & DNS",
+                detail: "All traffic is relayed — TCP via CONNECT, UDP and DNS via SOCKS5 UDP ASSOCIATE."
             )
             infoRow(
                 icon: "lock.shield",
