@@ -80,15 +80,36 @@ struct ApplicationRowView: View {
 
     private var proxyColumn: some View {
         VStack(alignment: .leading, spacing: 1) {
-            Text(state.proxyForDisplay(app))
-                .font(Theme.body)
-                .lineLimit(1)
+            HStack(spacing: 5) {
+                modeBadge
+                Text(state.proxyForDisplay(app))
+                    .font(Theme.body)
+                    .lineLimit(1)
+            }
             Text(state.proxySubtitleForDisplay(app))
                 .font(Theme.monoCaption)
                 .foregroundStyle(.tertiary)
                 .lineLimit(1)
         }
         .frame(width: proxyWidth, alignment: .leading)
+    }
+
+    /// Small icon+label indicating which proxy mode this app uses.
+    private var modeBadge: some View {
+        let mode: (icon: String, color: Color, label: String)
+        if app.usesTransparentProxy {
+            mode = ("network", Theme.blue, "Transparent")
+        } else if let profile = state.proxy(for: app), !profile.isDirect {
+            mode = ("terminal", .orange, "Launch")
+        } else {
+            mode = ("circle", .gray, "Off")
+        }
+        return Label(mode.label, systemImage: mode.icon)
+            .font(.system(size: 8.5, weight: .semibold))
+            .foregroundStyle(mode.color)
+            .padding(.horizontal, 5)
+            .padding(.vertical, 1.5)
+            .background(Capsule().fill(mode.color.opacity(0.12)))
     }
 
     private var statusColumn: some View {

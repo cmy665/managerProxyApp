@@ -2,8 +2,12 @@
 //  ApplicationDetailView.swift
 //  ProxyPilot
 //
-//  The right-hand inspector: proxy assignment, launch mode, bypass list,
-//  compatibility matrix and the launch actions.
+//  The right-hand inspector. Three mutually-exclusive proxy modes:
+//    - Off               : no proxying
+//    - Launch Proxy      : Phase 1 — --proxy-server / env vars, app must be
+//                          launched by ProxyPilot
+//    - Transparent Proxy : Phase 2 — system extension intercepts traffic per-flow,
+//                          no launch requirement
 //
 
 import SwiftUI
@@ -23,33 +27,110 @@ struct ApplicationDetailView: View {
     private var status: AppProxyStatus { state.status(for: current) }
     private var profile: ProxyProfile? { state.proxy(for: current) }
 
+    /// The currently-selected proxy mode, derived from the app's configuration.
+    private var activeMode: ProxyMode {
+        if current.usesTransparentProxy { return .transparent }
+        if let profile, !profile.isDirect { return .launch }
+        return .off
+    }
+
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 18) {
                 identitySection
                 Hairline()
-                proxySection
-                Hairline()
                 modeSection
                 Hairline()
-                bypassSection
-                Hairline()
-                compatibilitySection
 
-                if state.settings.showLaunchCommand {
-                    Hairline()
-                    launchCommandSection
+                switch activeMode {
+                case .launch:
+                    launchProxySections
+                case .transparent:
+                    transparentProxySections
+                case .off:
+                    offSection
                 }
-
-                Hairline()
-                actionsSection
             }
             .padding(16)
         }
         .background(Color(nsColor: .windowBackgroundColor))
     }
 
-    // MARK: Identity
+    // MARK: - Mode selector
+
+    private enum ProxyMode: String, CaseIterable, Identifiable {
+        case off = "Off"
+        case launch = "Launch Proxy"
+        case transparent = "Transparent Proxy"
+
+        var id: String { rawValue }
+
+        var icon: String {
+            switch self {
+            case .off: return "circle"
+            case .launch: return "terminal"
+            case .transparent: return "network"
+            }
+        }
+
+        var helpText: String {
+            switch self {
+            case .off:
+                return "This app connects directly with no proxy."
+            case .launch:
+                return "Passes --proxy-server or proxy environment variables when launching the app. The app must be started by ProxyPilot."
+            case .transparent:
+                return "System extension intercepts this app's TCP traffic and relays it through an upstream proxy. Works regardless of how the app is launched."
+            }
+        }
+    }
+
+    private var modeSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            PanelSectionTitle(text: "Proxy Mode")
+
+            Picker("", selection: Binding(
+                get: { activeMode },
+                set: { newMode in
+                    switch newMode {
+                    case .off:
+                        // Disable both launch-proxy and transparent-proxy.
+                        state.update(current) {
+                            $0.usesTransparentProxy = false
+                            $0.proxyProfileID = nil
+                        }
+                    case .launch:
+                        // Switch to launch proxy: disable transparent, keep
+                        // the assigned profile (or assign the default).
+                        state.update(current) { $0.usesTransparentProxy = false }
+                        if current.proxyProfileID == nil || profile?.isDirect == true {
+                            state.assignProxy(state.settings.defaultProxyProfileID ?? ProxyProfile.directID, to: current)
+                        }
+                    case .transparent:
+                        // Transparent proxy needs a non-direct upstream. If the
+                        // current profile is direct or missing, assign the default.
+                        if current.proxyProfileID == nil || profile?.isDirect == true {
+                            state.assignProxy(state.settings.defaultProxyProfileID ?? ProxyProfile.directID, to: current)
+                        }
+                        state.setTransparentProxyEnabled(true, for: current)
+                    }
+                }
+            )) {
+                ForEach(ProxyMode.allCases) { mode in
+                    Label(mode.rawValue, systemImage: mode.icon).tag(mode)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.segmented)
+
+            Text(activeMode.helpText)
+                .font(.system(size: 10.5))
+                .foregroundStyle(.tertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    // MARK: - Identity
 
     private var identitySection: some View {
         VStack(alignment: .leading, spacing: 12) {
@@ -75,23 +156,32 @@ struct ApplicationDetailView: View {
                 DetailRow(label: "Path", value: current.bundlePath, monospaced: true)
                 DetailRow(label: "Executable", value: current.executablePath.isEmpty ? "—" : current.executablePath, monospaced: true)
                 DetailRow(label: "Runtime", value: current.runtime.displayName)
-                DetailRow(
-                    label: "Detected by",
-                    value: AppDetector.detectionReason(
-                        bundleURL: current.bundleURL,
-                        bundleIdentifier: current.bundleIdentifier,
-                        executableURL: current.executableURL
-                    )
-                )
             }
         }
     }
 
-    // MARK: Proxy
+    // MARK: - Launch Proxy (Phase 1) sections
 
-    private var proxySection: some View {
+    @ViewBuilder
+    private var launchProxySections: some View {
+        launchProxyPickerSection
+        Hairline()
+        launchModeSection
+        Hairline()
+        bypassSection
+        Hairline()
+        launchCompatibilitySection
+        if state.settings.showLaunchCommand {
+            Hairline()
+            launchCommandSection
+        }
+        Hairline()
+        launchActionsSection
+    }
+
+    private var launchProxyPickerSection: some View {
         VStack(alignment: .leading, spacing: 8) {
-            PanelSectionTitle(text: "Proxy")
+            PanelSectionTitle(text: "Upstream Proxy")
 
             Picker("", selection: Binding(
                 get: { current.proxyProfileID ?? ProxyProfile.directID },
@@ -109,16 +199,8 @@ struct ApplicationDetailView: View {
             }
             .labelsHidden()
             .pickerStyle(.menu)
-            .disabled(current.usesTransparentProxy)
 
-            if current.usesTransparentProxy {
-                Label(
-                    "Transparent proxy is active — launch-argument and environment proxy are disabled for this app.",
-                    systemImage: "info.circle"
-                )
-                .font(.system(size: 10.5))
-                .foregroundStyle(Theme.blue)
-            } else if let profile, !profile.isDirect {
+            if let profile, !profile.isDirect {
                 HStack(spacing: 6) {
                     StatusPill(
                         text: state.health(for: profile).statusLabel,
@@ -130,9 +212,6 @@ struct ApplicationDetailView: View {
                 }
 
                 if profile.type == .socks5, current.runtime.supportsChromiumArguments {
-                    // Chromium resolves DNS locally for socks5://, so a poisoned or
-                    // fake-IP answer travels to the proxy. CONNECT carries the
-                    // hostname instead, which is why HTTP is the safer default here.
                     Label(
                         Localized.string("SOCKS5 resolves domains locally in Chromium — prefer an HTTP profile for this app."),
                         systemImage: "exclamationmark.triangle"
@@ -140,70 +219,23 @@ struct ApplicationDetailView: View {
                     .font(.system(size: 10.5))
                     .foregroundStyle(Theme.warning)
                 }
-            } else {
-                Text("This app connects directly. Choose a proxy profile to route its traffic.")
-                    .font(Theme.caption)
-                    .foregroundStyle(.secondary)
-            }
-
-            if let profile, !profile.isDirect {
-                transparentProxyRow
             }
         }
     }
 
-    private var transparentProxyRow: some View {
-        VStack(alignment: .leading, spacing: 4) {
-            HStack(alignment: .top, spacing: 10) {
-                VStack(alignment: .leading, spacing: 1) {
-                    Text("Transparent Proxy")
-                        .font(Theme.body)
-                    Text("Intercept this app's traffic with the system extension — covers apps that ignore launch arguments and environment variables.")
-                        .font(.system(size: 10))
-                        .foregroundStyle(.tertiary)
-                }
-                Spacer(minLength: 12)
-                Toggle("", isOn: Binding(
-                    get: { current.usesTransparentProxy },
-                    set: { state.setTransparentProxyEnabled($0, for: current) }
-                ))
-                .labelsHidden()
-                .toggleStyle(.switch)
-                .controlSize(.small)
-                .disabled(!state.settings.transparentProxyEnabled)
-            }
-
-            if !state.settings.transparentProxyEnabled {
-                Text("Turn on Transparent Proxy in Settings to route this app per-flow.")
-                    .font(.system(size: 10))
-                    .foregroundStyle(Theme.warning)
-            }
-        }
-        .padding(.top, 4)
-    }
-
-    // MARK: Mode
-
-    private var modeSection: some View {
+    private var launchModeSection: some View {
         VStack(alignment: .leading, spacing: 8) {
             HStack {
-                PanelSectionTitle(text: "Mode")
+                PanelSectionTitle(text: "Launch Strategy")
                 Spacer()
                 Text(strategyHint)
                     .font(.system(size: 10))
                     .foregroundStyle(.tertiary)
             }
 
-            if current.usesTransparentProxy {
-                Text("Launch mode is ignored — the system extension intercepts traffic regardless of how the app is started.")
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(.tertiary)
-            }
-
             VStack(alignment: .leading, spacing: 2) {
                 ForEach(LaunchStrategy.allCases) { option in
-                    modeRow(option)
-                        .disabled(current.usesTransparentProxy)
+                    launchModeRow(option)
                 }
             }
         }
@@ -216,7 +248,7 @@ struct ApplicationDetailView: View {
         return Localized.format("Resolves to %@", launcher.displayName)
     }
 
-    private func modeRow(_ option: LaunchStrategy) -> some View {
+    private func launchModeRow(_ option: LaunchStrategy) -> some View {
         Button {
             state.update(current) { $0.launchStrategy = option }
         } label: {
@@ -239,7 +271,248 @@ struct ApplicationDetailView: View {
         .buttonStyle(.plain)
     }
 
-    // MARK: Bypass
+    private var launchCompatibilitySection: some View {
+        let report = AppDetector.compatibility(for: current)
+
+        return VStack(alignment: .leading, spacing: 8) {
+            PanelSectionTitle(text: "Compatibility")
+
+            compatibilityRow(
+                title: "Chromium Proxy",
+                detail: report.chromiumSupported
+                    ? Localized.string("--proxy-server supported")
+                    : Localized.string("Not available for this runtime"),
+                supported: report.chromiumSupported
+            )
+            compatibilityRow(
+                title: "Environment Proxy",
+                detail: report.environmentNote,
+                supported: report.environmentSupported
+            )
+        }
+    }
+
+    private func compatibilityRow(title: LocalizedStringKey, detail: String, supported: Bool) -> some View {
+        HStack(spacing: 8) {
+            Image(systemName: supported ? "checkmark.circle.fill" : "minus.circle")
+                .font(.system(size: 11))
+                .foregroundStyle(supported ? Theme.active : Color.secondary.opacity(0.6))
+            VStack(alignment: .leading, spacing: 0) {
+                Text(title).font(Theme.body)
+                Text(detail).font(.system(size: 10)).foregroundStyle(.tertiary)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    private var launchActionsSection: some View {
+        VStack(spacing: 8) {
+            if let profile, !profile.isDirect {
+                Button {
+                    Task { await state.testProxy(profile) }
+                } label: {
+                    HStack {
+                        if state.testingProxyIDs.contains(profile.id) {
+                            ProgressView().controlSize(.small)
+                        }
+                        Text(state.testingProxyIDs.contains(profile.id) ? "Testing…" : "Test Proxy")
+                    }
+                    .frame(maxWidth: .infinity)
+                }
+                .buttonStyle(SecondaryButtonStyle(fullWidth: true))
+                .disabled(state.testingProxyIDs.contains(profile.id))
+            }
+
+            Button {
+                state.requestRestart(current)
+            } label: {
+                Label(
+                    state.isRunning(current) ? "Restart With Proxy" : "Launch With Proxy",
+                    systemImage: state.isRunning(current) ? "arrow.clockwise" : "play.fill"
+                )
+                .frame(maxWidth: .infinity)
+            }
+            .buttonStyle(PrimaryButtonStyle(fullWidth: true))
+
+            if status.isWarning {
+                Text(status == .proxyUnavailable
+                     ? "The assigned proxy is not reachable — the app may not have network access."
+                     : "The app is running with an older configuration. Restart to apply the current settings.")
+                    .font(.system(size: 10.5))
+                    .foregroundStyle(status.color)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    // MARK: - Transparent Proxy (Phase 2) sections
+
+    @ViewBuilder
+    private var transparentProxySections: some View {
+        transparentProxyPickerSection
+        Hairline()
+        transparentStatusSection
+        Hairline()
+        transparentInfoSection
+    }
+
+    private var transparentProxyPickerSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            PanelSectionTitle(text: "Upstream Proxy")
+
+            Picker("", selection: Binding(
+                get: { current.proxyProfileID ?? ProxyProfile.directID },
+                set: { newValue in
+                    state.assignProxy(newValue, to: current)
+                }
+            )) {
+                ForEach(state.allProxies) { option in
+                    Text(option.isDirect
+                         ? Localized.string("Direct (no proxy)")
+                         : Localized.format("%@ — %@", option.name, option.displayAddress))
+                        .tag(option.id)
+                }
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+
+            if let profile, !profile.isDirect {
+                HStack(spacing: 6) {
+                    StatusPill(
+                        text: state.health(for: profile).statusLabel,
+                        color: state.health(for: profile).color
+                    )
+                    Text(profile.subtitle)
+                        .font(Theme.monoCaption)
+                        .foregroundStyle(.secondary)
+                }
+            } else {
+                Label(
+                    "Transparent proxy requires an upstream proxy — select one above.",
+                    systemImage: "exclamationmark.triangle"
+                )
+                .font(.system(size: 10.5))
+                .foregroundStyle(Theme.warning)
+            }
+        }
+    }
+
+    private var transparentStatusSection: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            PanelSectionTitle(text: "Status")
+
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(transparentStatusColor)
+                    .frame(width: 8, height: 8)
+                Text(transparentStatusText)
+                    .font(Theme.body)
+                Spacer()
+            }
+
+            if !state.settings.transparentProxyEnabled {
+                Label(
+                    "Transparent Proxy master switch is off. Turn it on in Settings to activate the system extension.",
+                    systemImage: "exclamationmark.triangle"
+                )
+                .font(.system(size: 10.5))
+                .foregroundStyle(Theme.warning)
+            }
+        }
+    }
+
+    private var transparentStatusColor: Color {
+        guard state.settings.transparentProxyEnabled else { return .gray }
+        switch state.transparent.state {
+        case .active:   return .green
+        case .activating: return .yellow
+        case .failed:   return .red
+        default:        return .gray
+        }
+    }
+
+    private var transparentStatusText: String {
+        guard state.settings.transparentProxyEnabled else { return "Master switch off" }
+        switch state.transparent.state {
+        case .active:
+            return Localized.format("Active — intercepting traffic")
+        case .activating:
+            return "Activating…"
+        case .failed(let message):
+            return "Failed: \(message)"
+        case .disabled:
+            return "Extension ready"
+        case .unknown:
+            return "Not configured"
+        }
+    }
+
+    private var transparentInfoSection: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            PanelSectionTitle(text: "How It Works")
+
+            infoRow(
+                icon: "bolt.fill",
+                title: "No launch required",
+                detail: "The system extension intercepts traffic regardless of how or when the app was started."
+            )
+            infoRow(
+                icon: "network",
+                title: "TCP only",
+                detail: "Only TCP traffic is relayed. UDP and DNS continue to use the system's direct connection."
+            )
+            infoRow(
+                icon: "lock.shield",
+                title: "SNI-based routing",
+                detail: "Original hostnames are recovered from TLS SNI / HTTP Host headers so upstream proxies that require domain-based routing work correctly."
+            )
+            infoRow(
+                icon: "gearshape",
+                title: "Per-app rules",
+                detail: "Only apps with Transparent Proxy enabled are intercepted. All other apps are untouched."
+            )
+        }
+    }
+
+    private func infoRow(icon: String, title: String, detail: String) -> some View {
+        HStack(alignment: .top, spacing: 10) {
+            Image(systemName: icon)
+                .font(.system(size: 12))
+                .foregroundStyle(Theme.blue)
+                .frame(width: 16, alignment: .center)
+            VStack(alignment: .leading, spacing: 1) {
+                Text(title)
+                    .font(Theme.body)
+                Text(detail)
+                    .font(.system(size: 10))
+                    .foregroundStyle(.tertiary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    // MARK: - Off section
+
+    private var offSection: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Label(
+                "This app is not proxied. It connects directly to the internet.",
+                systemImage: "circle"
+            )
+            .font(Theme.body)
+            .foregroundStyle(.secondary)
+
+            Text("Choose Launch Proxy or Transparent Proxy above to route this app's traffic.")
+                .font(.system(size: 10.5))
+                .foregroundStyle(.tertiary)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.vertical, 8)
+    }
+
+    // MARK: - Bypass (shared, but only shown in Launch mode)
 
     private var bypassSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -284,7 +557,7 @@ struct ApplicationDetailView: View {
                 .help("Reset to the default bypass list")
             }
 
-            Text("Applied as NO_PROXY and as Chromium’s --proxy-bypass-list.")
+            Text("Applied as NO_PROXY and as Chromium's --proxy-bypass-list.")
                 .font(.system(size: 10))
                 .foregroundStyle(.tertiary)
         }
@@ -297,48 +570,7 @@ struct ApplicationDetailView: View {
         newBypassDomain = ""
     }
 
-    // MARK: Compatibility
-
-    private var compatibilitySection: some View {
-        let report = AppDetector.compatibility(for: current)
-
-        return VStack(alignment: .leading, spacing: 8) {
-            PanelSectionTitle(text: "Proxy compatibility")
-
-            compatibilityRow(
-                title: "Chromium Proxy",
-                detail: report.chromiumSupported
-                    ? Localized.string("--proxy-server supported")
-                    : Localized.string("Not available for this runtime"),
-                supported: report.chromiumSupported
-            )
-            compatibilityRow(
-                title: "Environment Proxy",
-                detail: report.environmentNote,
-                supported: report.environmentSupported
-            )
-            compatibilityRow(
-                title: "Transparent Proxy",
-                detail: "Requires Advanced Mode (Phase 2)",
-                supported: false
-            )
-        }
-    }
-
-    private func compatibilityRow(title: LocalizedStringKey, detail: String, supported: Bool) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: supported ? "checkmark.circle.fill" : "minus.circle")
-                .font(.system(size: 11))
-                .foregroundStyle(supported ? Theme.active : Color.secondary.opacity(0.6))
-            VStack(alignment: .leading, spacing: 0) {
-                Text(title).font(Theme.body)
-                Text(detail).font(.system(size: 10)).foregroundStyle(.tertiary)
-            }
-            Spacer(minLength: 0)
-        }
-    }
-
-    // MARK: Launch command
+    // MARK: - Launch command (Phase 1 only)
 
     private var launchCommandSection: some View {
         VStack(alignment: .leading, spacing: 8) {
@@ -376,49 +608,6 @@ struct ApplicationDetailView: View {
                 Text("No plan available for this configuration.")
                     .font(Theme.caption)
                     .foregroundStyle(.secondary)
-            }
-        }
-    }
-
-    // MARK: Actions
-
-    private var actionsSection: some View {
-        VStack(spacing: 8) {
-            if let profile, !profile.isDirect {
-                Button {
-                    Task { await state.testProxy(profile) }
-                } label: {
-                    HStack {
-                        if state.testingProxyIDs.contains(profile.id) {
-                            ProgressView().controlSize(.small)
-                        }
-                        Text(state.testingProxyIDs.contains(profile.id) ? "Testing…" : "Test Proxy")
-                    }
-                    .frame(maxWidth: .infinity)
-                }
-                .buttonStyle(SecondaryButtonStyle(fullWidth: true))
-                .disabled(state.testingProxyIDs.contains(profile.id))
-            }
-
-            Button {
-                state.requestRestart(current)
-            } label: {
-                Label(
-                    state.isRunning(current) ? "Restart With Proxy" : "Launch With Proxy",
-                    systemImage: state.isRunning(current) ? "arrow.clockwise" : "play.fill"
-                )
-                .frame(maxWidth: .infinity)
-            }
-            .buttonStyle(PrimaryButtonStyle(fullWidth: true))
-
-            if status.isWarning {
-                Text(status == .proxyUnavailable
-                     ? "The assigned proxy is not reachable — the app may not have network access."
-                     : "The app is running with an older configuration. Restart to apply the current settings.")
-                    .font(.system(size: 10.5))
-                    .foregroundStyle(status.color)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
