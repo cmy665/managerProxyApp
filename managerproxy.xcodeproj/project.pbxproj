@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		AA00000000000000000000AC /* ProxyPilotTransparentProxy.systemextension in Embed System Extensions */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000AF /* ProxyPilotTransparentProxy.systemextension */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		AA00000000000000000000AC /* com.proxypilot.mac.TransparentProxy.systemextension in Embed System Extensions */ = {isa = PBXBuildFile; fileRef = AA00000000000000000000AF /* com.proxypilot.mac.TransparentProxy.systemextension */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -34,7 +34,7 @@
 			dstPath = "$(SYSTEM_EXTENSIONS_FOLDER_PATH)";
 			dstSubfolderSpec = 16;
 			files = (
-				AA00000000000000000000AC /* ProxyPilotTransparentProxy.systemextension in Embed System Extensions */,
+				AA00000000000000000000AC /* com.proxypilot.mac.TransparentProxy.systemextension in Embed System Extensions */,
 			);
 			name = "Embed System Extensions";
 			runOnlyForDeploymentPostprocessing = 0;
@@ -44,7 +44,7 @@
 /* Begin PBXFileReference section */
 		83FE525A3052CD9F000424A1 /* ProxyPilot.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = ProxyPilot.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		83FE52C53052D2C5000424A1 /* ProxyPilotTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = ProxyPilotTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
-		AA00000000000000000000AF /* ProxyPilotTransparentProxy.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; name = ProxyPilotTransparentProxy.systemextension; path = com.proxypilot.mac.TransparentProxy.systemextension; sourceTree = BUILT_PRODUCTS_DIR; };
+		AA00000000000000000000AF /* com.proxypilot.mac.TransparentProxy.systemextension */ = {isa = PBXFileReference; explicitFileType = "wrapper.system-extension"; includeInIndex = 0; path = com.proxypilot.mac.TransparentProxy.systemextension; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
 /* Begin PBXFileSystemSynchronizedRootGroup section */
@@ -110,7 +110,7 @@
 			isa = PBXGroup;
 			children = (
 				83FE525A3052CD9F000424A1 /* ProxyPilot.app */,
-				AA00000000000000000000AF /* ProxyPilotTransparentProxy.systemextension */,
+				AA00000000000000000000AF /* com.proxypilot.mac.TransparentProxy.systemextension */,
 				83FE52C53052D2C5000424A1 /* ProxyPilotTests.xctest */,
 			);
 			name = Products;
@@ -187,7 +187,7 @@
 			packageProductDependencies = (
 			);
 			productName = ProxyPilotTransparentProxy;
-			productReference = AA00000000000000000000AF /* ProxyPilotTransparentProxy.systemextension */;
+			productReference = AA00000000000000000000AF /* com.proxypilot.mac.TransparentProxy.systemextension */;
 			productType = "com.apple.product-type.system-extension";
 		};
 /* End PBXNativeTarget section */
@@ -437,6 +437,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.proxypilot.mac;
 				PRODUCT_NAME = ProxyPilot;
@@ -471,6 +472,7 @@
 					"$(inherited)",
 					"@executable_path/../Frameworks",
 				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.proxypilot.mac;
 				PRODUCT_NAME = ProxyPilot;
@@ -528,7 +530,7 @@
 				CODE_SIGN_ENTITLEMENTS = ProxyPilotTransparentProxy/ProxyPilotTransparentProxy.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = 37AGF843SG;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -539,7 +541,7 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 11.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.proxypilot.mac.TransparentProxy;
 				PRODUCT_NAME = "$(PRODUCT_BUNDLE_IDENTIFIER)";
@@ -558,7 +560,7 @@
 				CODE_SIGN_ENTITLEMENTS = ProxyPilotTransparentProxy/ProxyPilotTransparentProxy.entitlements;
 				CODE_SIGN_STYLE = Automatic;
 				COMBINE_HIDPI_IMAGES = YES;
-				CURRENT_PROJECT_VERSION = 10;
+				CURRENT_PROJECT_VERSION = 12;
 				DEVELOPMENT_TEAM = 37AGF843SG;
 				ENABLE_HARDENED_RUNTIME = YES;
 				ENABLE_PREVIEWS = YES;
@@ -569,7 +571,7 @@
 					"@executable_path/../Frameworks",
 					"@executable_path/../../../../Frameworks",
 				);
-				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MACOSX_DEPLOYMENT_TARGET = 11.5;
 				MARKETING_VERSION = 1.0;
 				PRODUCT_BUNDLE_IDENTIFIER = com.proxypilot.mac.TransparentProxy;
 				PRODUCT_NAME = "$(PRODUCT_BUNDLE_IDENTIFIER)";
